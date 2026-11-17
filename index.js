@@ -11,7 +11,7 @@ const pool = mysql.createPool({
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     waitForConnections: true,
-    connectioLimit: 10,
+    connectionLimit: 10,
     queueLimit: 0
 })
 
@@ -64,6 +64,66 @@ app.get('/produtos', async(req, res) =>{
         res.status(500).json({erro: 'Erro interno ao buscar produtos'})
     }
 })
+
+// GET: Buscar um produto específico por ID
+app.get('/produtos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [produtos] = await pool.query('SELECT * FROM produtos WHERE id = ?', [id]);
+
+        if (produtos.length === 0) {
+            return res.status(404).json({ erro: 'Produto não encontrado.' });
+        }
+
+        res.status(200).json(produtos[0]);
+    } catch (erro) {
+        console.error(erro);
+        res.status(500).json({ erro: 'Erro interno ao buscar o produto.' });
+    }
+});
+
+// Atualizar
+app.put('/produtos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nome, preco, quantidade, categoria_id } = req.body;
+
+        if (!nome || !preco) {
+            return res.status(400).json({ erro: 'Nome e preço são obrigatórios para atualização.' });
+        }
+
+        const query = 'UPDATE produtos SET nome = ?, preco = ?, quantidade = ?, categoria_id = ? WHERE id = ?';
+        const [resultado] = await pool.query(query, [nome, preco, quantidade, categoria_id, id]);
+
+        if (resultado.affectedRows === 0) {
+            return res.status(404).json({ erro: 'Produto não encontrado.' });
+        }
+
+        res.status(200).json({ mensagem: 'Produto atualizado com sucesso!' });
+    } catch (erro) {
+        console.error(erro);
+        res.status(500).json({ erro: 'Erro interno ao atualizar o produto.', detalhes: erro.message });
+    }
+});
+
+// Excluir
+app.delete('/produtos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const query = 'DELETE FROM produtos WHERE id = ?';
+        const [resultado] = await pool.query(query, [id]);
+
+        if (resultado.affectedRows === 0) {
+            return res.status(404).json({ erro: 'Produto não encontrado.' });
+        }
+
+        res.status(200).json({ mensagem: 'Produto excluído com sucesso!' });
+    } catch (erro) {
+        console.error(erro);
+        res.status(500).json({ erro: 'Erro ao excluir. Verifique se o produto não está vinculado a algum pedido.' });
+    }
+});
 
 //ROTAS DE CLIENTES
 
